@@ -6,7 +6,7 @@
 	CATEGORY:    Library
 	SET:         Core Library
 	VERSION:     01:alpha0
-	DESCRIPTION: 
+	DESCRIPTION:
 		Manages files & folders.
 		Most of these functions are selfexplaining.
 ]]--
@@ -57,17 +57,17 @@ end
 
 function _fs.makeDir(p)
 	local i, j = string.find(p, "[..]/")
-	
+
 	if i then
-		return "error"
+		return "error: '../'"
 	end
-	
+
 	local i, j = string.find(p, "//")
-	
+
 	if i then
-		return	"error"
+		return	"error: //"
 	end
-	
+
 	local i, j = string.find(p, "/")
 	if i == 1 and j == i then
 		p = p
@@ -81,7 +81,7 @@ function _fs.makeDir(p)
 	elseif wx == "x" then
 		return "noPermission"
 	else
-		return	"error"
+		return	"error with permission"
 	end
 end
 
@@ -123,7 +123,7 @@ _fs.getFreeSpace = old.fs.getFreeSpace
 
 function _fs.move(from, to)
 	local m = lib.perm.permission.check(from)
-	
+
 	if m == "w" then
 		local m = lib.perm.permission.check(to)
 		if m == "w" then
@@ -152,11 +152,13 @@ function _fs.delete(p)
 	elseif m == "x" then
 		return "noPermission"
 	else
-		
+
 	end
 end
 
-_fs.combine = old.fs.combine
+_fs.combine = function(a, b)
+	return "/"..old.fs.combine(a, b)
+end
 _fs.find = old.fs.find
 _fs.getDir = old.fs.getDir
 _fs.complete = old.fs.complete

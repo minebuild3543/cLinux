@@ -15,3 +15,40 @@ name = luaide
 	version = 1.0
 	size = 61948
 end
+
+name = doorX
+	type = raw
+		url = http://pastebin.com/raw/Rnp97GRT
+		filename = InstallDoorX
+	dependencies = none
+	cleanup = InstallDoorX uninstall
+	version = 2.1
+	size = 4210
+end
+
+name = updater
+	type = raw
+		url = http://pastebin.com/raw/NKEKjfpb
+		filename = UpdateCLinux
+	dependencies = none
+	version = 1.0
+	size = 4350
+end
+
+name = fseapi
+	type = raw
+		url = http://pastebin.com/raw/8JRrW0Va
+		filename = fsEAPI
+	dependencies = none
+	version = 1.0
+	size = 4350
+end
+
+name = fsexpose
+	type = raw
+		url = http://pastebin.com/raw/Wqp7RnVh
+		filename = fsexpose
+	dependencies = none
+	version = 2.5
+	size = 18195
+end

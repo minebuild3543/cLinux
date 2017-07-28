@@ -1,5 +1,4 @@
 
-
 --[[
 	cLinux : Lore of the Day!
 	Made by Piorjade, daelvn
@@ -8,7 +7,7 @@
 	CATEGORY:    boot
 	SET:         Boot III
 	VERSION:     01:alpha0
-	DESCRIPTION: 
+	DESCRIPTION:
 		This script is ran after /boot/load
 		and starts the basic services up.
 ]]--
@@ -23,32 +22,63 @@ end]]
 local tasks = {}
 local curPath = "/"
 local maintask = 0
-thread = sThread
+local thread = sThread
 term.setCursorPos(1,1)
-term.setBackgroundColor(colors.blue)
+term.setBackgroundColor(colors.black)
 term.setTextColor(colors.white)
 term.clear()
-_put('rednet', lib.rednet)
-
+--_put('os', lib.os)
 
 --[[
 						##EXPERIMENTAL##
 				PLEASE REPORT BUGS IN THE FORUM POST
-				
+
 					--Shell API dummies--
 					(simulate shell functions)
 ]]
 shell = {}
 function shell.run(path, ...)
+	if not string.find(path, "/", 1, 1) then
+		path = "/bin/"..path
+	end
 	local tArgs = {...}
+	local c = path
+	local counter = 1
+	repeat
+		local i, j = string.find(c, " ")
+		if i then
+			if counter == 1 then
+				path = string.sub(c, 1, i-1)
+				c = string.sub(c, j+1)
+				counter = counter+1
+			else
+				local arg = string.sub(c, 1, i-1)
+				if not arg then
+					printError("Fatal Error.")
+					return false
+				end
+				c = string.sub(c, j+1)
+				if not a then
+					break
+				end
+				table.insert(tArgs, arg)
+				counter = counter+1
+			end
+		elseif counter > 1 then
+			table.insert(tArgs, c)
+		end
+	until i == nil
 	local function _copy(a, b)
 		for k, v in pairs(a) do
+			b[k] = v
+		end
+		for k, v in pairs(b['lib']) do
 			b[k] = v
 		end
 	end
 	local env = {}
 	_copy(_G, env)
-	blacklist = {'rawget', 'rawset', 'dofile'}	--things that shouldn't get added, and extras
+	blacklist = {'rawget', 'rawset', 'dofile', 'flag'}	--things that shouldn't get added, and extras
 	for k, v in ipairs(blacklist) do env[v] = nil end
 	return os.run(env, path, unpack(tArgs))
 end
@@ -62,15 +92,19 @@ function shell.dir()
 end
 function shell.setDir(p)
 	if fs.exists(p) and fs.isDir(p) then
-		local i, j = string.find(p, "/")
-		if i == 1 then
+		local i, j = string.find(p, "/", 1)
+		if not string.find(p, "/", #p) then p = p.."/" end
+		if i == 1 and #p > 1 then
+			curPath = p
+		elseif #p == 1 and p == "/" then
 			curPath = p
 		else
 			curPath = "/"..p
 		end
 		return
-	elseif fs.exists(curPath.."/"..p) and fs.isDir(curPath.."/"..p) then
-		curPath = curPath.."/"..p
+	elseif fs.exists(curPath..p) and fs.isDir(curPath..p) and string.find(p, "/", 1) ~= 1 then
+		curPath = curPath..p
+		if not string.find(curPath, "/", #curPath) then curPath = curPath.."/" end
 		return
 	elseif fs.exists(p) == false or fs.isDir(p) == false then
 		return false
@@ -128,23 +162,12 @@ function shell.programs(hidden)
 	end
 end
 
-function shell.openTag()
+function shell.openTab()
 	return nil
 end
 function shell.switchTab()
 	return nil
 end
---[[function shell.complete(s)
-	local a = fs.list("/bin/")
-	local c = {}
-	for _, b in ipairs(a) do
-		local i, j = string.find(b, s)
-		if i == 1 then
-			table.insert(c, b)
-		end
-	end
-	return c
-end]]
 local function tokenise( ... )
     local sLine = table.concat( { ... }, " " )
 	local tWords = {}
@@ -245,7 +268,9 @@ end
 function shell.getCompletionInfo()
 	return tCompletionInfo
 end
-
+function shell.getRunningProgram(threadlist)		--if you make your service, you NEED to specify a table with names of your running programs
+	return threadlist[#threadlist]
+end
 
 function shell.startServ(k, args)
 	local n, err = thread.new(k, nil, nil, nil, nil, nil, nil, nil, nil, args)
@@ -267,6 +292,7 @@ function shell.stopServ(name)
 	return false
 end
 
+_G['shell'] = shell
 
 function printError(str)
 	local c = term.getTextColor()
@@ -276,9 +302,21 @@ function printError(str)
 end
 
 local services = lib.serv.giveList()
+
+if flag.text == true then
+	services = {
+	  [ "/sys/cmdbak" ] = "core",
+	  [ "/sys/redn" ] = false,
+	}
+end
+
+
+
 for _, a in pairs(services) do
-	if type(a) == true then
-		if _ == "/sys/commandline" then
+	if a == true then
+		if _ == "/sys/cmdbak" then
+			_ = _
+		elseif string.find(_, "/", 1, 1) then
 			_ = _
 		else
 			_ = "/etc/services.d/".._
@@ -301,6 +339,9 @@ for _, a in pairs(services) do
 			sleep(0.5)
 		end
 	elseif a == "core" then
+		if not string.find(_, "/", 1, 1) then
+			_ = "/etc/services.d/".._
+		end
 		local x, y = term.getCursorPos()
 		x = 1
 		y = y+1
@@ -322,25 +363,24 @@ for _, a in pairs(services) do
 			maintask = n.uid
 			tasks = n.next
 			sleep(0.5)
+
 		end
 	end
 end
 
 
 
-
-
-
 while true do
-	
-	thread.runAll(tasks)
+	local ok, err = pcall(thread.runAll, tasks)
+	if not ok then
+		flag.STATE_CRASHED = err
+	end
 	local ok, err = thread.getError()
 	if ok ~= "noError" then
 		printError(err)
 	end
 	if #tasks < 1 or tasks[maintask].dead then
 		flag.STATE_DEAD = true
-		break
 	end
 	--[[term.write("#")
 	local e = read()

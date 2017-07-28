@@ -2,12 +2,14 @@
 	cLinux: Ran out of lores... already
 	Made by Piorjade, daelvn
 
-	NAME:        /lib/sThread.l
+	NAME:        /sys/sThread.l
 	CATEGORY:    library
 	SET:         Native Libraries I
 	VERSION:     01:alpha0
-	DESCRIPTION: 
-		Manages the coroutines, used in shell.
+	DESCRIPTION:
+		Manages the coroutines, used in shell. (mainly services)
+
+		PLEASE USE /lib/thread.l FOR YOUR PROGRAMS, WAY BETTER
 ]]--
 
 
@@ -73,23 +75,31 @@ function sThread.new(file, uid, fg, width, height, parent, main, lx, ly, args) -
 	else
 		self.main = false
 	end
-	
+
 	self.uid = uid
 	local function _copy(a, b)
 		for k, v in pairs(a) do
 			b[k] = v
 		end
+		for k, v in pairs(_G.lib) do
+			b['lib'][k] = v
+		end
 	end
 	self.env = {}
+
 	_copy(_G, self.env)
-	blacklist = {'rawget', 'rawset', 'dofile', 'thread', 'sThread'}	--things that shouldn't get added, and extras
+	blacklist = {'rawget', 'rawset', 'dofile', 'sThread','old'}	--things that shouldn't get added, and extras
 	for k, v in ipairs(blacklist) do self.env[v] = nil end
+	setmetatable(self.env, {__index = _G.lib})
+	if not fs.exists(file) then
+		return false, "File not found."
+	end
 	self.task, err = loadfile(file)
-	
+
 	if not self.task then
 		return false, err
 	end
-	setfenv(self.task, self.env)
+	--setfenv(self.task, self.env)
 	self.thread = coroutine.create(self.task)
 	self.file = tostring(file)
 	self.filter = nil
@@ -110,36 +120,12 @@ function sThread.new(file, uid, fg, width, height, parent, main, lx, ly, args) -
 			fst = {unpack(self.args)}
 			self.args = nil
 		end
-		--if self.filter == nil or fst[1] == self.filter then
 		if not self.dead then
-			if self.window ~= nil then
-				--local o = term.current()
-				--[[if self.main then
-					self.lastx, self.lasty = lastx, lasty
-				end]]
-				--self.window.redraw()
-				term.redirect(self.window)
-				--term.setCursorPos(self.lastx, self.lasty)
-			elseif mainwindow then
-				--mainwindow.redraw()
-				--self.lastx, self.lasty = mainwindow.getCursorPos()
-				--self.lastx = lastx
-				--self.lasty = lasty
-				term.redirect(mainwindow)
-				--term.setCursorPos(self.lastx, self.lasty)
-			end
-			--term.restoreCursor()
 			ok, err = coroutine.resume(self.thread, unpack(fst))
 			self.lastx, self.lasty = term.getCursorPos()
 			if self.main == true then
 				lastx = self.lastx
 				lasty = self.lasty
-			end
-			if mainwindow and self.main == false then
-				lastx = self.lastx
-				lasty = self.lasty
-				term.redirect(mainwindow)
-				--term.setCursorPos(lastx, lasty)
 			end
 			if ok then
 				self.filter = err
@@ -165,7 +151,7 @@ function sThread.queue(process, event, parameters)
 	process.queue[#process.queue+1] = {event = event, parameters = parameters}
 	return true
 end
- 
+
 function sThread.kill(process)
 	process.dead = true
 	process.status = "dead"
@@ -201,7 +187,7 @@ function sThread.runAll(tasklist)
 			else
 				ok, err = task.resume(unpack(evt))
 				if ok == nil or ok == true then
-					
+
 				else
 					errors.ok = ok
 					errors.err = err
@@ -221,3 +207,5 @@ function sThread.runAll(tasklist)
 	end
 	return
 end
+
+_put('sThread', sThread)
